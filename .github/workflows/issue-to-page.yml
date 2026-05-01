@@ -35,8 +35,7 @@ jobs:
 
           event = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = event["issue"]
-
-          title = issue["title"]
+title = issue["title"]
 
 default_chat_id = os.environ["TELEGRAM_CHAT_ID"]
 haber_chat_id = os.environ.get("TELEGRAM_HABER_CHAT_ID", default_chat_id)
