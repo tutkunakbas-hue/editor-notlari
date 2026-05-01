@@ -21,6 +21,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_HABER_CHAT_ID: ${{ secrets.TELEGRAM_HABER_CHAT_ID }}
         run: |
           python3 << 'PY'
           import os
@@ -36,8 +37,19 @@ jobs:
           issue = event["issue"]
 
           title = issue["title"]
-          body = issue.get("body") or ""
-          number = issue["number"]
+
+default_chat_id = os.environ["TELEGRAM_CHAT_ID"]
+haber_chat_id = os.environ.get("TELEGRAM_HABER_CHAT_ID", default_chat_id)
+
+lower_title = title.lower()
+
+selected_chat_id = default_chat_id
+
+if "[haber]" in lower_title or "haber" in lower_title:
+    selected_chat_id = haber_chat_id
+
+body = issue.get("body") or ""
+number = issue["number"]
 
           def slugify(text):
               tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
