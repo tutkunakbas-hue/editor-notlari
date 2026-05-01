@@ -24,31 +24,14 @@ jobs:
           TELEGRAM_HABER_CHAT_ID: ${{ secrets.TELEGRAM_HABER_CHAT_ID }}
         run: |
           python3 << 'PY'
-          import os
-          import re
-          import html
-          import json
-          import datetime
-          import pathlib
-          import urllib.parse
-          import urllib.request
+          import os, re, html, json, datetime, pathlib, urllib.parse, urllib.request
 
           event = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = event["issue"]
-title = issue["title"]
 
-default_chat_id = os.environ["TELEGRAM_CHAT_ID"]
-haber_chat_id = os.environ.get("TELEGRAM_HABER_CHAT_ID", default_chat_id)
-
-lower_title = title.lower()
-
-selected_chat_id = default_chat_id
-
-if "[haber]" in lower_title or "haber" in lower_title:
-    selected_chat_id = haber_chat_id
-
-body = issue.get("body") or ""
-number = issue["number"]
+          title = issue["title"]
+          body = issue.get("body") or ""
+          number = issue["number"]
 
           def slugify(text):
               tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
@@ -146,7 +129,7 @@ number = issue["number"]
           if index_path.exists():
               index = index_path.read_text(encoding="utf-8")
           else:
-              index = "<!doctype html><html><body><h1>Editör Notları</h1><ul></ul></body></html>"
+              index = "<!doctype html><html><body><h1>AI Editör Notları</h1><ul></ul></body></html>"
 
           if "</ul>" in index:
               index = index.replace("</ul>", link + "\n</ul>")
@@ -156,16 +139,16 @@ number = issue["number"]
           index_path.write_text(index, encoding="utf-8")
 
           bot_token = os.environ["TELEGRAM_BOT_TOKEN"]
-          chat_id = os.environ["TELEGRAM_CHAT_ID"]
-          url = f"https://{os.environ['GITHUB_REPOSITORY_OWNER']}.github.io/editor-notlari/{filename}"
+          default_chat_id = os.environ["TELEGRAM_CHAT_ID"]
+          haber_chat_id = os.environ.get("TELEGRAM_HABER_CHAT_ID", default_chat_id)
 
-          message = f"Editör Notu:\n\n{title}\n\n{url}"
+          lower_title = title.lower()
+          chat_id = haber_chat_id if ("[haber]" in lower_title or "haber" in lower_title) else default_chat_id
 
-          data = urllib.parse.urlencode({
-              "chat_id": chat_id,
-              "text": message
-          }).encode("utf-8")
+          page_url = f"https://{os.environ['GITHUB_REPOSITORY_OWNER']}.github.io/editor-notlari/{filename}"
+          message = f"Editör Notu:\n\n{title}\n\n{page_url}"
 
+          data = urllib.parse.urlencode({"chat_id": chat_id, "text": message}).encode("utf-8")
           api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
 
           req = urllib.request.Request(api_url, data=data, method="POST")
