@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<body>
+
+<h1>Claude çıktısı</h1>
+
+<p>Buraya Claude’dan gelen metni yapıştıracaksın.</p>
+
+<table border="1">
+<tr>
+<th>Başlık</th>
+<th>Risk</th>
+</tr>
+
+<tr>
+<td>Örnek</td>
+<td>Orta</td>
+</tr>
+
+</table>
+
+</body>
+</html>
