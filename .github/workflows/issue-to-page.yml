@@ -1,0 +1,184 @@
+name: AI Note to HTML Page
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  build-page:
+    if: github.event.label.name == 'publish'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Generate HTML page from issue
+        run: |
+          python3 << 'PY'
+          import os, re, html, datetime, pathlib, json
+
+          event = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+          issue = event["issue"]
+
+          title = issue["title"]
+          body = issue.get("body") or ""
+          number = issue["number"]
+
+          def slugify(text):
+              tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+              text = text.translate(tr).lower()
+              text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+              return text[:90] or f"not-{number}"
+
+          slug = slugify(title)
+          today = datetime.date.today().isoformat()
+          filename = f"notes/{today}-{slug}.html"
+          pathlib.Path("notes").mkdir(exist_ok=True)
+
+          def convert(md):
+              lines = md.splitlines()
+              out = []
+              in_ul = False
+              in_table = False
+
+              for line in lines:
+                  raw = line.rstrip()
+
+                  if not raw:
+                      if in_ul:
+                          out.append("</ul>")
+                          in_ul = False
+                      if in_table:
+                          out.append("</tbody></table></div>")
+                          in_table = False
+                      continue
+
+                  if raw.startswith("# "):
+                      out.append(f"<h1>{html.escape(raw[2:])}</h1>")
+                  elif raw.startswith("## "):
+                      out.append(f"<h2>{html.escape(raw[3:])}</h2>")
+                  elif raw.startswith("### "):
+                      out.append(f"<h3>{html.escape(raw[4:])}</h3>")
+                  elif raw.startswith("- ") or raw.startswith("* "):
+                      if not in_ul:
+                          out.append("<ul>")
+                          in_ul = True
+                      out.append(f"<li>{html.escape(raw[2:])}</li>")
+                  elif "|" in raw:
+                      cells = [c.strip() for c in raw.strip("|").split("|")]
+                      if all(re.fullmatch(r":?-{3,}:?", c) for c in cells):
+                          continue
+                      if not in_table:
+                          out.append('<div class="table-wrap"><table><tbody>')
+                          in_table = True
+                      out.append("<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in cells) + "</tr>")
+                  else:
+                      if in_ul:
+                          out.append("</ul>")
+                          in_ul = False
+                      if in_table:
+                          out.append("</tbody></table></div>")
+                          in_table = False
+                      out.append(f"<p>{html.escape(raw)}</p>")
+
+              if in_ul:
+                  out.append("</ul>")
+              if in_table:
+                  out.append("</tbody></table></div>")
+
+              return "\n".join(out)
+
+          content = convert(body)
+
+          page = f"""<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 24px;
+      line-height: 1.58;
+      color: #111;
+    }}
+    h1 {{
+      font-size: 32px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }}
+    h2 {{
+      margin-top: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 6px;
+    }}
+    h3 {{
+      margin-top: 22px;
+    }}
+    .meta {{
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 24px;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 15px;
+    }}
+    td, th {{
+      border: 1px solid #ddd;
+      padding: 10px;
+      vertical-align: top;
+    }}
+    tr:first-child td {{
+      font-weight: 700;
+      background: #f3f3f3;
+    }}
+    .table-wrap {{
+      overflow-x: auto;
+    }}
+  </style>
+</head>
+<body>
+  <h1>{html.escape(title)}</h1>
+  <div class="meta">Yayın tarihi: {today} · Issue #{number}</div>
+  {content}
+</body>
+</html>"""
+
+          open(filename, "w", encoding="utf-8").write(page)
+
+          index = pathlib.Path("index.html")
+          link = f'<li><a href="{filename}">{html.escape(title)}</a> — {today}</li>'
+
+          if index.exists():
+              old = index.read_text(encoding="utf-8")
+          else:
+              old = "<!doctype html><html><body><h1>Editör Notları</h1><ul></ul></body></html>"
+
+          if "</ul>" in old:
+              old = old.replace("</ul>", f"{link}\n</ul>")
+          else:
+              old += f"<ul>{link}</ul>"
+
+          index.write_text(old, encoding="utf-8")
+
+          print(filename)
+          PY
+
+      - name: Commit generated page
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Publish AI note as page" || echo "No changes"
+          git push
