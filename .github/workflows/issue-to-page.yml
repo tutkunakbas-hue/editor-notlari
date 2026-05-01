@@ -154,4 +154,6 @@ jobs:
           URL="https://${OWNER}.github.io/editor-notlari/notes/${DATE}-${SLUG}.html"
           MESSAGE="Editör Notu:%0A%0A${TITLE}%0A%0A${URL}"
 
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=${MESSAGE}"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+  -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+  -d "text=${MESSAGE}"
