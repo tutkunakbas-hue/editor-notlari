@@ -144,7 +144,7 @@ jobs:
           git commit -m "Publish AI note as page" || echo "No changes"
           git push
 
-      - name: Send to Telegram
+            - name: Send to Telegram
         run: |
           TITLE="${{ github.event.issue.title }}"
           OWNER="${{ github.repository_owner }}"
@@ -152,8 +152,11 @@ jobs:
           SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
           DATE=$(date +%F)
           URL="https://${OWNER}.github.io/editor-notlari/notes/${DATE}-${SLUG}.html"
-          MESSAGE="Editör Notu:%0A%0A${TITLE}%0A%0A${URL}"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-  -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-  -d "text=${MESSAGE}"
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text=Editör Notu:
+
+${TITLE}
+
+${URL}"
